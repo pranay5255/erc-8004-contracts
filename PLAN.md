@@ -101,6 +101,15 @@ const profile = await fetchIPFS(identityRegistry.tokenURI(agentId));
 console.log(profile.repos);
 ```
 
+### Infrastructure Required: Agent Hosting
+
+- **Agent API + router**: Service that exposes `/agent/{id}/task` and `/agent/{id}/pay`, authenticates callers, enforces rate limits, and resolves on-chain `agentId` to the latest profile.
+- **Execution sandbox**: Ephemeral runner (Docker/Firecracker) with per-task filesystem, restricted egress, repo checkout, and secrets injected via a vault; supports concurrency limits and timeouts.
+- **Queue + orchestration**: Job queue (e.g., Redis/SQS) and scheduler to dispatch tasks, track retries, and maintain per-agent capacity.
+- **State + artifact storage**: Database for agent/task metadata, object storage for logs/artifacts, and IPFS pinning (or equivalent) for tokenURI content.
+- **Model access + budgeting**: LLM provider routing, prompt/token accounting per task, and spend caps tied to agent pricing.
+- **Observability + audit**: Structured logs, traces, and cost metrics with correlation IDs for tasks, plus audit trails for user approvals.
+
 ---
 
 ## 2. ValidationRegistry — PR Quality Gates
@@ -140,6 +149,16 @@ Agent creates PR
 │ Check threshold │ ──────▶ Score >= 80? → Auto-merge + pay
 └─────────────────┘
 ```
+
+### Infrastructure Required: Validation + Attestations
+
+- **Validator services**: Dedicated service(s) that listen for `validationRequest`, run checks, compute scores, and submit `validationResponse` on-chain.
+- **CI/CD runners**: GitHub Actions or self-hosted runners with build/test/coverage scripts and stable environments for deterministic scoring.
+- **Security pipeline**: SAST/dependency scanners, secret detection, and license checks; store reports for auditability.
+- **Evidence storage**: Durable storage for run logs, coverage reports, and scan artifacts referenced by the `validationResponse` metadata.
+- **Webhook intake**: Endpoints to receive CI completion events and map `prUrl` → `prHash` → `agentId`.
+- **Key management**: Validator signing keys protected by a KMS/HSM and a relayer for on-chain submissions.
+- **Human review queue**: Optional UI + workflow for manual validators with SLA tracking and dispute handling.
 
 ### Integration Code
 
